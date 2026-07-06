@@ -13,6 +13,7 @@ consumes ``input/*.txt`` regardless of which parser produced the text.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from pathlib import Path
 from typing import Iterable
@@ -36,11 +37,13 @@ def _unique_txt_path(target_dir: Path, source: Path, used: set[str]) -> Path:
     return target_dir / candidate
 
 
-def _extract_parser_text(path: Path) -> str:
+async def _extract_parser_text(path: Path) -> str:
     from deeptutor.services.parsing import ParserError, get_parse_service
 
     try:
-        parsed = get_parse_service().parse(path)
+        # parse() runs a blocking subprocess (e.g. MinerU CLI) — offload to a
+        # thread so the asyncio event loop stays responsive.
+        parsed = await asyncio.to_thread(get_parse_service().parse, path)
     except ParserError as exc:
         logger.error("GraphRAG ingestion: failed to parse %s: %s", path.name, exc)
         return ""
@@ -76,7 +79,7 @@ async def prepare_input(file_paths: Iterable[str], root_dir: Path) -> int:
 
     for file_path_str in classification.parser_files:
         path = Path(file_path_str)
-        text = _extract_parser_text(path)
+        text = await _extract_parser_text(path)
         written += _write_doc(target_dir, path, text, used)
 
     for file_path_str in classification.text_files:

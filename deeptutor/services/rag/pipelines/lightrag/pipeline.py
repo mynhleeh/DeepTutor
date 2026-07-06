@@ -16,6 +16,7 @@ message when it is not installed instead of an opaque ``ImportError``.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from pathlib import Path
 import shutil
@@ -85,7 +86,10 @@ class LightRagPipeline:
         for file_path in file_paths:
             path = Path(file_path)
             try:
-                doc = parse_service.parse(path)
+                # parse() is a sync, blocking call that may run a MinerU
+                # subprocess for several minutes. Offload to a thread-pool
+                # worker so the asyncio event loop (uvicorn) stays responsive.
+                doc = await asyncio.to_thread(parse_service.parse, path)
             except ParserError as exc:
                 self.logger.warning("LightRAG: parse failed for %s: %s", path.name, exc)
                 continue

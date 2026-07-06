@@ -9,6 +9,7 @@ content; nothing is parsed implicitly.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from pathlib import Path
 from typing import Callable, Optional
@@ -127,6 +128,23 @@ class ParseService:
         except Exception:
             cache.cleanup_failed(workdir)
             raise
+
+    async def parse_async(
+        self,
+        source_path: str | Path,
+        *,
+        engine: Optional[str] = None,
+        on_output: Optional[Callable[[str], None]] = None,
+    ) -> ParsedDocument:
+        """Async-safe wrapper around :meth:`parse`.
+
+        Offloads the blocking ``parse()`` call to a thread-pool executor so
+        the asyncio event loop is never blocked by subprocess I/O or heavy
+        CPU work (e.g. MinerU local CLI parsing a large PDF).
+        """
+        return await asyncio.to_thread(
+            self.parse, source_path, engine=engine, on_output=on_output
+        )
 
 
 _service: Optional[ParseService] = None
