@@ -228,6 +228,7 @@ export default function QuizViewer({
   >({});
   const judgeHandlesRef = useRef<Map<number, QuizJudgeHandle>>(new Map());
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const lookedUpRef = useRef<Set<string>>(new Set());
 
   useEffect(
     () => () => {
@@ -236,6 +237,10 @@ export default function QuizViewer({
     },
     [],
   );
+
+  useEffect(() => {
+    lookedUpRef.current.clear();
+  }, [sessionId]);
 
   const q = questions[idx];
   const ans = answers[idx] ?? EMPTY_ANSWER;
@@ -260,6 +265,9 @@ export default function QuizViewer({
 
   const refreshEntryId = useCallback(
     async (qKey: string, sId: string, questionIndex?: number) => {
+      const cacheKey = `${sId}::${turnId ?? "_"}::${qKey}`;
+      if (lookedUpRef.current.has(cacheKey)) return;
+      lookedUpRef.current.add(cacheKey);
       try {
         const entry = await lookupNotebookEntry(sId, qKey, turnId);
         if (entry) {
@@ -444,6 +452,7 @@ export default function QuizViewer({
     lastReportedSignatureRef.current = signature;
     void recordQuizResults(sessionId, submittedResults, turnId)
       .then(() => {
+        lookedUpRef.current.clear();
         questions.forEach((question, i) => {
           void refreshEntryId(getQuestionKey(question, i), sessionId);
         });
@@ -685,14 +694,23 @@ export default function QuizViewer({
           }
         },
         onError: (message) => {
+          let partialText = "";
           setJudgments((prev) => {
             const current = prev[idx] ?? EMPTY_JUDGMENT;
+            partialText = current.text;
             return {
               ...prev,
               [idx]: { ...current, isStreaming: false, error: message },
             };
           });
           judgeHandlesRef.current.delete(idx);
+          const key = q ? getQuestionKey(q, idx) : "";
+          const eId = key ? entryIds[key] : undefined;
+          if (eId && partialText.trim().length > 0) {
+            void updateNotebookEntry(eId, { ai_judgment: partialText }).catch(
+              () => {},
+            );
+          }
         },
       },
     );
