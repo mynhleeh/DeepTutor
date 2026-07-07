@@ -2,7 +2,7 @@
 
 <p align="center"><img src="assets/figs/logo/logo.png" alt="DeepTutor logo" height="56" style="vertical-align: middle;">&nbsp;<img src="assets/figs/logo/banner.png" alt="DeepTutor" height="48" style="vertical-align: middle;"></p>
 
-# DeepTutor: Lifelong Personalized Tutoring
+# DeepTutor: Lifelong Personalized Tutoring (Optimized Fork)
 
 <p align="center">
   <a href="https://deeptutor.info" target="_blank"><img alt="Docs — deeptutor.info" src="https://img.shields.io/badge/Docs-deeptutor.info%20%E2%86%97-0A0A0A?style=for-the-badge&labelColor=F5F5F4" height="36"></a>
@@ -43,6 +43,30 @@
 </div>
 
 ---
+
+## 🚀 Fork Overview
+
+> ⚠️ **Note:** This is a customized fork of the original repository [HKUDS/DeepTutor](https://github.com/HKUDS/DeepTutor). The primary goal of this fork is **bug fixing** and **performance optimization** during practical usage.
+
+This fork introduces important improvements to make the project more stable and its codebase cleaner. Below are the details of the changes:
+
+### 1. Performance Optimization (QuizViewer Notebook Lookup Optimization)
+- **Backend Load Reduction (Spam 204 Polling Fix):** Completely resolved an issue where `QuizViewer` would continuously call the API (generating tens to hundreds of `204 No Content` requests per session) while the AI was streaming questions. Implementing a cache (using `useRef`) **reduced redundant requests by ~90%**, saving I/O and reducing log noise for the backend.
+- **AI Judgment Data Preservation:** Fixed a bug where AI evaluation data (AI Judgment) was completely lost if the network disconnected mid-stream. Now, any streamed text is automatically saved to the database even when an error occurs.
+- *See detailed technical analysis at: [`docs/fork/spam_204_polling_fix.md`](docs/fork/spam_204_polling_fix.md)*
+
+### 2. Root Directory Reorganization
+- **Cleaner and Easier to Manage:** Moved 9 non-essential configuration and documentation files from the root directory into logically named subdirectories (`docs/`, `.github/`, `.agents/`, `docker/`).
+- **Fully Compatible with CI/CD Pipelines:** Core files such as `docker-compose.yml`, `Dockerfile`, and `pyproject.toml` were kept in their original locations. Internal references were updated to ensure the project builds and runs normally.
+- *See the list of moved files at: [`docs/fork/root_directory_reorganization.md`](docs/fork/root_directory_reorganization.md)*
+
+### 3. Installation & Support
+- **Installation & Configuration:** The installation, environment configuration, and startup processes (Docker, Source, CLI) **remain unchanged** from the original repository. You can follow the [Get Started](#-get-started) guide below.
+- **Maintainer & Roadmap:** There is currently no specific roadmap for new features, nor is there dedicated maintainer/support information for this fork. The immediate goal is to continue optimizing the code while maintaining upstream compatibility.
+
+---
+
+*(Below is the original documentation of the DeepTutor project)*
 
 > 🤝 **We welcome any kinds of contributing!** Vote on roadmap items or propose new ones at [`Roadmap`](https://github.com/HKUDS/DeepTutor/issues/498), and see our [Contributing Guide](CONTRIBUTING.md) for branching strategy, coding standards, and how to get started.
 
