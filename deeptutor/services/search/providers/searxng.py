@@ -20,6 +20,10 @@ def _validate_base_url(base_url: str) -> str:
         raise ValueError("SearXNG base_url must use http/https")
     if not parsed.netloc:
         raise ValueError("SearXNG base_url is missing host")
+    # Reject malformed netloc like "::8080" (no actual hostname)
+    host = parsed.hostname or ""
+    if not host or host in ("", ":"):
+        raise ValueError(f"SearXNG base_url has an invalid hostname: {parsed.netloc!r}")
     return parsed.geturl().rstrip("/")
 
 
@@ -48,7 +52,14 @@ class SearxngProvider(BaseSearchProvider):
             "q": query,
             "format": "json",
         }
-        request_kwargs: dict[str, Any] = {"params": params}
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/125.0.0.0 Safari/537.36"
+            ),
+        }
+        request_kwargs: dict[str, Any] = {"params": params, "headers": headers}
         if self.proxy:
             request_kwargs["proxies"] = {"http": self.proxy, "https": self.proxy}
         resp = requests.get(endpoint, timeout=timeout, **request_kwargs)
