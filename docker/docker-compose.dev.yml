@@ -1,7 +1,7 @@
 # ============================================
 # DeepTutor Docker Compose - Development Override
 # ============================================
-# Use with: python scripts/docker_compose.py -f docker-compose.yml -f docker-compose.dev.yml up
+# Use with: python scripts/docker_compose.py -f docker-compose.yml -f docker/docker-compose.dev.yml up
 #
 # This override file provides:
 #   - Hot-reload for both frontend and backend

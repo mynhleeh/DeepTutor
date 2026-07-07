@@ -10,20 +10,20 @@
 #     This file is `podman-compose` 1.5+ compatible.
 #   * Verify with:  `podman compose version` and  `podman info | grep -i rootless`
 #
-# Bring up (this file lives next to docker-compose.yml, so always pass -f):
+# Bring up (this file lives in docker/ so pass -f docker/compose.yaml):
 #   cp .env.example .env       # then edit
-#   podman compose -f compose.yaml up -d
-#   podman compose -f compose.yaml ps
-#   podman compose -f compose.yaml logs -f deeptutor
+#   podman compose -f docker/compose.yaml up -d
+#   podman compose -f docker/compose.yaml ps
+#   podman compose -f docker/compose.yaml logs -f deeptutor
 #
-#   Tip: alias it for the session —  alias dc='podman compose -f compose.yaml'
-#   or export COMPOSE_FILE=compose.yaml so the default `podman compose`
+#   Tip: alias it for the session —  alias dc='podman compose -f docker/compose.yaml'
+#   or export COMPOSE_FILE=docker/compose.yaml so the default `podman compose`
 #   picks this file up without -f.
 #
 # Tear down (keeps volumes):
-#   podman compose -f compose.yaml down
+#   podman compose -f docker/compose.yaml down
 # Wipe data (DESTRUCTIVE):
-#   podman compose -f compose.yaml down -v
+#   podman compose -f docker/compose.yaml down -v
 #
 # Top-level choices (see git log / PR for full rationale):
 #   * All services run with `read_only: true`. The `tmpfs:` mounts below are
@@ -91,9 +91,9 @@ services:
       # reads and writes line up. (The pocketbase image's entrypoint
       # uses --dir=/pb_data --publicDir=/pb_public --hooksDir=/pb_hooks
       # — absolute paths, no /pb/ prefix.)
-      - ./data/pocketbase:/pb_data:U
-      - ./data/pocketbase/public:/pb_public:U
-      - ./data/pocketbase/hooks:/pb_hooks:U
+      - ../data/pocketbase:/pb_data:U
+      - ../data/pocketbase/public:/pb_public:U
+      - ../data/pocketbase/hooks:/pb_hooks:U
     networks:
       - deeptutor
     healthcheck:
@@ -154,7 +154,7 @@ services:
       # (data/user), per-user workspaces (data/users), partners
       # (data/partners), accounts/grants/audit (data/system),
       # knowledge bases, memory, logs. One tree to back up.
-      - ./data:/app/data:U
+      - ../data:/app/data:U
     environment:
       # Time zone — picked up by Python (time.tzset) and Next.js at boot.
       - TZ=${TZ:-UTC}

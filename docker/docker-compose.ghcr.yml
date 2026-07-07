@@ -5,7 +5,7 @@
 # No local build required — the image is pulled automatically.
 #
 # Usage:
-#   python scripts/docker_compose.py -f docker-compose.ghcr.yml up -d
+#   python scripts/docker_compose.py -f docker/docker-compose.ghcr.yml up -d
 #
 # To pin a specific version:
 #   Edit the image tag below, e.g. ghcr.io/hkuds/deeptutor:1.0.0

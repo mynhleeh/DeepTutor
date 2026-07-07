@@ -5,7 +5,7 @@
 #
 # Usage:
 #   Production:  python scripts/docker_compose.py up -d
-#   Development: python scripts/docker_compose.py -f docker-compose.yml -f docker-compose.dev.yml up
+#   Development: python scripts/docker_compose.py -f docker-compose.yml -f docker/docker-compose.dev.yml up
 #   Build only:  python scripts/docker_compose.py build
 #
 # Prerequisites:
@@ -111,7 +111,7 @@ services:
   sandbox-runner:
     build:
       context: .
-      dockerfile: Dockerfile.runner
+      dockerfile: docker/Dockerfile.runner
     container_name: deeptutor-sandbox-runner
     restart: unless-stopped
 
