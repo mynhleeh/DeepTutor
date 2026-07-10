@@ -6,7 +6,7 @@ from typing import Any
 
 from deeptutor.capabilities.protocol import PromptBlock
 from deeptutor.core.context import UnifiedContext
-from deeptutor.services.prompt.language import append_language_directive
+
 
 
 class ChatPromptAssembler:
@@ -41,7 +41,21 @@ class ChatPromptAssembler:
         joined = "\n\n---\n\n".join(
             f"## {block.name}\n{block.content.strip()}" for block in blocks if block.content.strip()
         )
-        return append_language_directive(joined, self.language)
+        # Use a soft language directive for chat to allow the LLM to naturally 
+        # follow the user's language or explicit instructions, instead of forcing 
+        # it strictly via append_language_directive.
+        if self.language.startswith("zh"):
+            soft_directive = (
+                "\n\n[语言要求 / Language] 请优先使用用户交流时所用的语言进行回复，或根据用户的明确指令切换语言。"
+                "如果不确定，请默认使用中文（简体）进行回复。你可以自由切换语言以适应对话内容。"
+            )
+        else:
+            soft_directive = (
+                "\n\n[Language] Respond in the same language the user uses, or the language "
+                "they explicitly instruct you to use. If you are unsure, default to English. "
+                "You are free to switch languages to match the conversational context."
+            )
+        return f"{joined}{soft_directive}"
 
     def blocks(
         self,
@@ -101,11 +115,13 @@ class ChatPromptAssembler:
         Chat turns carry no identity and render the general block unchanged.
         """
         identity = context.metadata.get("agent_identity")
-        name = ""
-        if isinstance(identity, dict):
-            name = str(identity.get("name") or "").strip()
+        if not isinstance(identity, dict):
+            return self._t("general")
+            
+        name = str(identity.get("name") or "").strip()
         if not name:
             return self._t("general")
+            
         content = self._t(
             "general_partner",
             default='You are a companion created by the user. The name the user gave you is "{name}".',

@@ -60,7 +60,12 @@ This fork introduces important improvements to make the project more stable and 
 - **Fully Compatible with CI/CD Pipelines:** Core files such as `docker-compose.yml`, `Dockerfile`, and `pyproject.toml` were kept in their original locations. Internal references were updated to ensure the project builds and runs normally.
 - *See the list of moved files at: [`docs/fork/root_directory_reorganization.md`](docs/fork/root_directory_reorganization.md)*
 
-### 3. Installation & Support
+### 3. Language Decoupling (Soft Language Directive)
+- **Flexible Sub-Agents:** Modified the `language_directive` from a strict constraint to a soft guidance. Sub-agents (e.g., vision solver, quiz generation) can now dynamically adapt to the user's conversational language rather than being strictly forced into the system language.
+- **Safe Tool Calling:** Ensures the AI maintains English for tool names, JSON formats, and code syntax to prevent system errors when communicating in other languages.
+- *See detailed technical analysis at: [`docs/fork/language_decoupling.md`](docs/fork/language_decoupling.md)*
+
+### 4. Installation & Support
 - **Installation & Configuration:** The installation, environment configuration, and startup processes (Docker, Source, CLI) **remain unchanged** from the original repository. You can follow the [Get Started](#-get-started) guide below.
 - **Maintainer & Roadmap:** There is currently no specific roadmap for new features, nor is there dedicated maintainer/support information for this fork. The immediate goal is to continue optimizing the code while maintaining upstream compatibility.
 

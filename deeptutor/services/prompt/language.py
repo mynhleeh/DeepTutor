@@ -36,31 +36,20 @@ def language_label(language: str | None) -> str:
 
 
 def language_directive(language: str | None) -> str:
-    """Return a strict reader-facing language instruction for prompts."""
+    """Return a flexible reader-facing language instruction for prompts."""
     code = normalize_language(language)
     label = language_label(code)
     if code.startswith("zh"):
         return (
-            "\n\n[语言要求 / Language] "
-            f"请严格使用{label}撰写所有面向读者的文本（标题、正文、解释、提示、过渡句、"
-            "题干、选项等），即使参考资料、JSON 字段名或英文术语出现在 prompt 中也"
-            "不得切换语言；保留必要的专有名词原文（如人名、产品名、公式中的变量符号"
-            f"等）即可，其余一律使用{label}。"
-        )
-    if code == "en":
-        return (
-            "\n\n[Language] Write ALL reader-facing text (titles, prose, "
-            "explanations, hints, transitions, quiz stems, options, etc.) in "
-            "English. Do NOT switch languages even if the source material, "
-            "JSON keys, or examples in this prompt are in another language. "
-            "Keep proper nouns (people, products, formula symbols) in their "
-            "original form."
+            "\n\n[语言要求 / Language] 请优先使用用户交流时所用的语言进行回复，或根据用户的明确指令切换语言。"
+            "你不受单一语言的限制。但在调用工具 (Tool calls)、编写代码或输出 JSON 时，请保持必要的英文格式。"
+            "如果不确定，请默认使用中文（简体）。"
         )
     return (
-        f"\n\n[Language] Write ALL reader-facing text strictly in {label}. "
-        "Do NOT switch languages even if the source material, JSON keys, or "
-        "examples in this prompt are in a different language. Keep proper "
-        "nouns (people, products, formula symbols) in their original form."
+        "\n\n[Language] Respond in the same language the user uses, or the language "
+        "they explicitly instruct you to use. You are NOT restricted to a single language. "
+        "However, maintain English for Tool calls, JSON formats, and code syntax. "
+        f"If you are unsure, default to {label}."
     )
 
 
