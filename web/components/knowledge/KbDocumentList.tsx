@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  Check,
   ChevronDown,
   ChevronRight,
   Folder,
@@ -12,10 +13,13 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   RefreshCw,
+  Trash2,
+  X,
 } from "lucide-react";
 import { invalidateClientCache } from "@/lib/client-cache";
 import {
   createKbFolder,
+  deleteKbFile,
   listKnowledgeBaseFiles,
   moveKbFile,
   type KnowledgeBaseFile,
@@ -27,7 +31,7 @@ interface KbDocumentListProps {
   /** Refresh trigger: bumping this prop forces a re-fetch (e.g. after upload). */
   refreshKey?: number;
   selectedFile: string | null;
-  onSelect: (file: KnowledgeBaseFile) => void;
+  onSelect: (file: KnowledgeBaseFile | null) => void;
   collapsed: boolean;
   onToggleCollapsed: () => void;
 }
@@ -116,6 +120,7 @@ export default function KbDocumentList({
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [moveMenuFor, setMoveMenuFor] = useState<string | null>(null);
+  const [confirmDeleteFor, setConfirmDeleteFor] = useState<string | null>(null);
   const [dragPath, setDragPath] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -195,6 +200,21 @@ export default function KbDocumentList({
           type: "file",
         });
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDelete = async (path: string) => {
+    setConfirmDeleteFor(null);
+    setBusy(true);
+    try {
+      await deleteKbFile(kbName, path);
+      // Drop the preview if the deleted file was the one being shown.
+      if (selectedFile === path) onSelect(null);
+      await load(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -336,17 +356,61 @@ export default function KbDocumentList({
               </div>
             </div>
           </button>
-          <button
-            type="button"
-            onClick={() =>
-              setMoveMenuFor((cur) => (cur === node.path ? null : node.path))
-            }
-            title={t("Move to…")}
-            aria-label={t("Move to…")}
-            className="shrink-0 rounded p-1 text-[var(--muted-foreground)] opacity-0 transition-opacity hover:bg-[var(--muted)] hover:text-[var(--foreground)] group-hover/row:opacity-100"
-          >
-            <MoveRight className="h-3.5 w-3.5" />
-          </button>
+          {confirmDeleteFor === node.path ? (
+            <div className="flex shrink-0 items-center gap-0.5 pr-0.5">
+              <span className="px-0.5 text-[10px] font-medium text-red-600 dark:text-red-400">
+                {t("Delete?")}
+              </span>
+              <button
+                type="button"
+                onClick={() => void handleDelete(node.path)}
+                disabled={busy}
+                title={t("Confirm delete")}
+                aria-label={t("Confirm delete")}
+                className="rounded p-1 text-red-600 transition-colors hover:bg-red-50 disabled:opacity-40 dark:text-red-400 dark:hover:bg-red-950/40"
+              >
+                <Check className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteFor(null)}
+                title={t("Cancel")}
+                aria-label={t("Cancel")}
+                className="rounded p-1 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex shrink-0 items-center opacity-0 transition-opacity group-hover/row:opacity-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmDeleteFor(null);
+                  setMoveMenuFor((cur) =>
+                    cur === node.path ? null : node.path,
+                  );
+                }}
+                title={t("Move to…")}
+                aria-label={t("Move to…")}
+                className="rounded p-1 text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] hover:text-[var(--foreground)]"
+              >
+                <MoveRight className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMoveMenuFor(null);
+                  setConfirmDeleteFor(node.path);
+                }}
+                title={t("Delete file")}
+                aria-label={t("Delete file")}
+                className="rounded p-1 text-[var(--muted-foreground)] transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
         </div>
 
         {moveMenuFor === node.path && (

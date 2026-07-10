@@ -4,7 +4,11 @@ import asyncio
 import json
 from pathlib import Path
 
-from deeptutor.knowledge.add_documents import DocumentAdder
+from deeptutor.knowledge.add_documents import (
+    DocumentAdder,
+    RawDocumentRemoval,
+    remove_raw_document,
+)
 
 
 def _write_provider_version(kb_dir: Path, provider: str) -> None:
@@ -95,3 +99,63 @@ def test_process_new_documents_returns_failures_without_marking_processed(
     assert result.failed_count == 1
     assert "provider exploded" in result.failure_summary()
     assert adder.get_ingested_hashes() == {}
+
+
+def test_remove_raw_document_deletes_file_and_hash_without_index(
+    tmp_path: Path,
+) -> None:
+    # Deliberately NO provider index: an error-state KB may have none, yet its
+    # raw files must stay removable (DocumentAdder would refuse to construct).
+    kb_dir = tmp_path / "kb"
+    raw_dir = kb_dir / "raw"
+    raw_dir.mkdir(parents=True)
+    doc = raw_dir / "big.pdf"
+    doc.write_text("x", encoding="utf-8")
+    (kb_dir / "metadata.json").write_text(
+        json.dumps({"file_hashes": {"big.pdf": "deadbeef"}, "keep": True}),
+        encoding="utf-8",
+    )
+
+    removal = remove_raw_document(kb_dir, doc)
+
+    assert removal == RawDocumentRemoval(rel_path="big.pdf", was_indexed=True)
+    assert not doc.exists()
+    metadata = json.loads((kb_dir / "metadata.json").read_text(encoding="utf-8"))
+    assert metadata["file_hashes"] == {}
+    assert metadata["keep"] is True  # unrelated metadata is preserved
+
+
+def test_remove_raw_document_reports_unindexed_file(tmp_path: Path) -> None:
+    kb_dir = tmp_path / "kb"
+    raw_dir = kb_dir / "raw"
+    raw_dir.mkdir(parents=True)
+    doc = raw_dir / "never_indexed.pdf"
+    doc.write_text("x", encoding="utf-8")
+    # No metadata.json at all — the file failed before any hash was recorded.
+
+    removal = remove_raw_document(kb_dir, doc)
+
+    assert removal.rel_path == "never_indexed.pdf"
+    assert removal.was_indexed is False
+    assert not doc.exists()
+
+
+def test_remove_raw_document_uses_relative_key_for_nested_file(
+    tmp_path: Path,
+) -> None:
+    kb_dir = tmp_path / "kb"
+    nested = kb_dir / "raw" / "papers" / "2024"
+    nested.mkdir(parents=True)
+    doc = nested / "a.pdf"
+    doc.write_text("x", encoding="utf-8")
+    (kb_dir / "metadata.json").write_text(
+        json.dumps({"file_hashes": {"papers/2024/a.pdf": "hash", "other.pdf": "keep"}}),
+        encoding="utf-8",
+    )
+
+    removal = remove_raw_document(kb_dir, doc)
+
+    assert removal.was_indexed is True
+    assert removal.rel_path == "papers/2024/a.pdf"
+    remaining = json.loads((kb_dir / "metadata.json").read_text(encoding="utf-8"))
+    assert remaining["file_hashes"] == {"other.pdf": "keep"}

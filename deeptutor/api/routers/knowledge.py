@@ -33,7 +33,7 @@ from pydantic import BaseModel
 from deeptutor.api.utils.progress_broadcaster import ProgressBroadcaster
 from deeptutor.api.utils.task_id_manager import TaskIDManager
 from deeptutor.api.utils.task_log_stream import capture_task_logs, get_task_stream_manager
-from deeptutor.knowledge.add_documents import DocumentAdder
+from deeptutor.knowledge.add_documents import DocumentAdder, remove_raw_document
 from deeptutor.knowledge.initializer import KnowledgeBaseInitializer
 from deeptutor.knowledge.kb_types import is_connected_kb
 from deeptutor.knowledge.manager import KnowledgeBaseManager
@@ -1962,6 +1962,30 @@ async def serve_kb_raw_file(kb_name: str, filename: str):
         filename=target.name,
         content_disposition_type="inline",
     )
+
+
+@router.delete("/{kb_name}/files/{filename:path}")
+async def delete_kb_file(kb_name: str, filename: str):
+    """Remove a single raw document from a knowledge base.
+
+    Unlike deleting the whole KB, this works while the KB is in an *error*
+    state — that is the point: a file that failed to parse (e.g. one that
+    exceeds the cloud parser's page limit) can be dropped without deleting and
+    rebuilding everything. Connected (read-only) and legacy KBs are still
+    rejected. Vectors are not pruned here; ``was_indexed`` tells the caller
+    whether a re-index is needed to purge the file from retrieval.
+    """
+    manager, kb_name, _ = _writable_kb(kb_name)
+    _assert_kb_writable_or_409(kb_name, _load_kb_entry_or_404(manager, kb_name))
+    target = _resolve_kb_raw_file_or_404(kb_name, filename)
+
+    kb_dir = manager.get_knowledge_base_path(kb_name)
+    removal = remove_raw_document(Path(kb_dir), target)
+    return {
+        "status": "ok",
+        "path": removal.rel_path,
+        "was_indexed": removal.was_indexed,
+    }
 
 
 @router.delete("/{kb_name}")

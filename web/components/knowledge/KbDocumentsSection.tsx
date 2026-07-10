@@ -53,33 +53,36 @@ export default function KbDocumentsSection({
   const status = resolveKbStatus(kb);
   const isError = status === "error";
 
-  const blockedReason = !uploadable
-    ? needsReindex
-      ? t(
-          "This knowledge base is in legacy index format and needs reindex before upload.",
-        )
-      : isError
-        ? t(
-            "This knowledge base is in Error state. Retry indexing from the existing documents before uploading new files.",
-          )
-        : status !== "ready"
-          ? t(
-              "This knowledge base is currently {{status}} and cannot accept uploads yet.",
-              { status: status.replaceAll("_", " ") },
-            )
-          : null
-    : null;
-
-  const selection = validateFiles(files, uploadPolicy, t);
   const isUploadingHere = task?.kind === "upload" && task.executing;
   const isIndexingHere =
     (task?.kind === "reindex" || task?.kind === "retry") && task.executing;
   const isRetryingHere = task?.kind === "retry" && task.executing;
+
+  // An error-state KB is not locked: the user can drop the file(s) that failed
+  // (Files tab) and upload replacements here, instead of being forced to
+  // delete and rebuild the whole base. Uploads stay open unless a rebuild is
+  // actively running; legacy/transition states remain genuinely blocked.
+  const canUpload = uploadable || (isError && !isIndexingHere);
+
+  const blockedReason = canUpload
+    ? null
+    : needsReindex
+      ? t(
+          "This knowledge base is in legacy index format and needs reindex before upload.",
+        )
+      : status !== "ready"
+        ? t(
+            "This knowledge base is currently {{status}} and cannot accept uploads yet.",
+            { status: status.replaceAll("_", " ") },
+          )
+        : null;
+
+  const selection = validateFiles(files, uploadPolicy, t);
   const canRetry = Boolean(onRetry) && isError && !isIndexingHere;
   // Unsupported files are skipped (shown in the drop zone), not blocking, so a
   // picked folder with mixed content still uploads its supported members.
   const canSubmit =
-    uploadable &&
+    canUpload &&
     selection.validFiles.length > 0 &&
     !submitting &&
     !isUploadingHere;
@@ -134,9 +137,19 @@ export default function KbDocumentsSection({
       </div>
 
       {blockedReason && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+          {blockedReason}
+        </div>
+      )}
+
+      {isError && !blockedReason && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
-          <span>{blockedReason}</span>
-          {onRetry && isError && (
+          <span>
+            {t(
+              "The last indexing run failed. Remove the file(s) that failed in the Files tab, upload replacements below, or retry to rebuild from the current documents.",
+            )}
+          </span>
+          {onRetry && (
             <button
               type="button"
               onClick={handleRetry}
@@ -160,7 +173,7 @@ export default function KbDocumentsSection({
         files={files}
         onChange={setFiles}
         uploadPolicy={uploadPolicy}
-        disabled={!uploadable || isUploadingHere}
+        disabled={!canUpload || isUploadingHere}
       />
 
       <div className="flex items-center justify-end">

@@ -70,6 +70,77 @@ class DocumentIndexResult:
         return "; ".join(shown)
 
 
+@dataclass(frozen=True)
+class RawDocumentRemoval:
+    """Outcome of removing one raw document from a knowledge base."""
+
+    rel_path: str
+    was_indexed: bool
+
+
+def _read_metadata(metadata_file: Path) -> dict:
+    """Load a KB's metadata.json, returning {} when absent or unreadable."""
+    if not metadata_file.exists():
+        return {}
+    try:
+        with open(metadata_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _write_metadata(metadata_file: Path, metadata: dict) -> None:
+    """Persist a KB's metadata.json (pretty-printed, non-ASCII preserved)."""
+    with open(metadata_file, "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=2, ensure_ascii=False)
+
+
+def _raw_hash_key(file_path: Path, raw_dir: Path) -> str:
+    """Stable ``file_hashes`` key for a staged file.
+
+    The key is the POSIX path relative to ``raw/`` (so folder uploads keep
+    distinct entries), falling back to the basename for anything that resolves
+    outside ``raw/``. Indexing and removal MUST share this rule, otherwise a
+    removed file's hash record would leak and silently skip a later re-add.
+    """
+    try:
+        return file_path.resolve().relative_to(raw_dir.resolve()).as_posix()
+    except ValueError:
+        return file_path.name
+
+
+def remove_raw_document(kb_dir: Path, file_path: Path) -> RawDocumentRemoval:
+    """Delete one staged raw file and drop its indexed-hash record.
+
+    Deliberately decoupled from :class:`DocumentAdder` (whose constructor
+    requires a ready provider index): a KB stuck in an *error* state often has
+    no index at all, yet its raw/ files must still be removable so the user can
+    drop an unparseable document instead of deleting and rebuilding the whole
+    KB. Vectors are not touched here — the providers index whole KBs, so any
+    vectors from an already-indexed file are cleared by a subsequent re-index,
+    which the returned ``was_indexed`` flag lets the caller surface.
+
+    ``file_path`` must already be sandbox-resolved under the KB's raw/ dir.
+    """
+    raw_dir = kb_dir / "raw"
+    hash_key = _raw_hash_key(file_path, raw_dir)
+
+    target = file_path.resolve()
+    if target.exists():
+        target.unlink()
+
+    metadata_file = kb_dir / "metadata.json"
+    metadata = _read_metadata(metadata_file)
+    hashes = metadata.get("file_hashes")
+    was_indexed = isinstance(hashes, dict) and hash_key in hashes
+    if was_indexed:
+        del hashes[hash_key]
+        _write_metadata(metadata_file, metadata)
+
+    return RawDocumentRemoval(rel_path=hash_key, was_indexed=was_indexed)
+
+
 class DocumentAdder:
     """Stage and index new files through a KB's bound RAG provider."""
 
@@ -223,22 +294,10 @@ class DocumentAdder:
 
     def _record_successful_hash(self, file_path: Path) -> None:
         file_hash = self._get_file_hash(file_path)
-
-        metadata: dict = {}
-        if self.metadata_file.exists():
-            try:
-                with open(self.metadata_file, "r", encoding="utf-8") as f:
-                    metadata = json.load(f)
-            except Exception:
-                metadata = {}
-
-        try:
-            hash_key = file_path.resolve().relative_to(self.raw_dir.resolve()).as_posix()
-        except ValueError:
-            hash_key = file_path.name
+        metadata = _read_metadata(self.metadata_file)
+        hash_key = _raw_hash_key(file_path, self.raw_dir)
         metadata.setdefault("file_hashes", {})[hash_key] = file_hash
-        with open(self.metadata_file, "w", encoding="utf-8") as f:
-            json.dump(metadata, f, indent=2, ensure_ascii=False)
+        _write_metadata(self.metadata_file, metadata)
 
     def update_metadata(self, added_count: int) -> None:
         """Update metadata after incremental add."""

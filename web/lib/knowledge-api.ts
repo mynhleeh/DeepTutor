@@ -776,6 +776,26 @@ export async function moveKbFile(
   invalidateKnowledgeCaches();
 }
 
+/**
+ * Delete a single raw document from a KB. Works even while the KB is in an
+ * error state, so an unparseable file can be dropped without rebuilding the
+ * whole base. `was_indexed` signals whether a re-index is needed to purge the
+ * file's vectors from retrieval.
+ */
+export async function deleteKbFile(
+  name: string,
+  filename: string,
+): Promise<{ was_indexed: boolean }> {
+  const res = await apiFetch(apiUrl(knowledgeBaseFilePath(name, filename)), {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    throw new Error(await readErrorDetail(res, "Failed to delete file"));
+  }
+  invalidateKnowledgeCaches();
+  return (await res.json()) as { was_indexed: boolean };
+}
+
 export async function setDefaultKnowledgeBase(name: string): Promise<void> {
   const res = await apiFetch(
     apiUrl(`/api/v1/knowledge/default/${encodeURIComponent(name)}`),
