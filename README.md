@@ -65,12 +65,7 @@ This fork introduces important improvements to make the project more stable and 
 - **Safe Tool Calling:** Ensures the AI maintains English for tool names, JSON formats, and code syntax to prevent system errors when communicating in other languages.
 - *See detailed technical analysis at: [`docs/fork/language_decoupling.md`](docs/fork/language_decoupling.md)*
 
-### 4. Quiz Markdown Export Enhancements
-- **Full Quiz Reconstruction:** Fixed an issue where exported markdown chat files did not contain the actual quiz data. The export script now parses streaming `events` and extracts the complete quiz structure (Questions, Options, Explanations).
-- **User Answer Injection & Log Cleanup:** Automatically scrubs noisy `[Quiz Performance]` system logs from the markdown export, while cleverly extracting the user's answers from them via Regex. User answers are then cleanly injected directly beneath each quiz question.
-- *See detailed technical analysis at: [`docs/fork/quiz_export_enhancements.md`](docs/fork/quiz_export_enhancements.md)*
-
-### 5. Installation & Support
+### 4. Installation & Support
 - **Installation & Configuration:** The installation, environment configuration, and startup processes (Docker, Source, CLI) **remain unchanged** from the original repository. You can follow the [Get Started](#-get-started) guide below.
 - **Maintainer & Roadmap:** There is currently no specific roadmap for new features, nor is there dedicated maintainer/support information for this fork. The immediate goal is to continue optimizing the code while maintaining upstream compatibility.
 
